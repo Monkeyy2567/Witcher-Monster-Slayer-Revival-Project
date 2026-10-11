@@ -373,6 +373,26 @@ Uncommitted. From the maintainer's quest test on the 13:07 build and their list 
   - Full server suite (310 on Windows): only the 18 known Windows-only failures. `story_audit.py`: 0 errors, the same 4 warnings.
     `tools/client116` tests and the hook bundle compile pass.
 
+## 0.2.1 (2026-10-11): Report on GitHub, in-game notes
+- **Published:** `0.1.0-alpha` (release) and `0.2.0-alpha` (a **pre-release**: the 00:02 build, without Save Data). The app's update
+  check reads `releases/latest`, which skips pre-releases. Remote tags carry no `v`; `Updates.newer` ignores the `-alpha` suffix.
+- **Report on GitHub (`DebugInfo.issue`):** signed out, GitHub's sign-in carries the whole link in `return_to`, and with the full
+  phone header (~2,000 characters) signing in ended on a 500 at `github.com/session`. The issue now gets a two-line summary
+  (~600 characters). The button first makes the same zip as Send a report (after a "this goes public" dialog), and the issue
+  names the file to attach. Tested on the Xiaomi: sign-in with 2FA lands on the prefilled issue, and the zip is in Downloads.
+- **Version 0.2.1** (z: app only). Against 0.2.0-alpha the runtime differs only in `defaults/news/release.json` (hook bundle and
+  Gadget byte-identical), so its players keep their game; 0.1.0 clients (`builtFor` 0.1) are still offered "Update the game".
+- **What's new:** `news/release.json` holds the 0.2.1 notes, everything since 0.1.0 (one item, plain ASCII, 4,045 characters:
+  without a `{{img=` tag the news window is one TMP text, so no `<`). `test_news` passes. The posting copies (GitHub, Discord
+  in six messages under 2,000 characters, Reddit) are in `local/release/notes-0.2.1/`.
+- **Build:** runtime rebuilt, `local/release/witcher-monster-slayer-companion-app-0.2.1-arm64-v8a.apk`, installed on the Xiaomi.
+- **Server tests on this PC:** `server/.toolchain` is not installed, so `dev.py` refuses to build. The system SDK works
+  (`C:\Program Files\dotnet`, 10.0.401): set `dev.DOTNET` to it before importing the tests.
+- **Open, Save Data restore** (`MainActivity.onActivityResult`, request 2): it deletes `state/profiles` before reading the zip (a
+  wrong or empty file wipes the progress and still says "restored"), the running server keeps the profile in memory and writes
+  it back on its next save, and entry paths are not checked (zip slip inside the app's files). The 0.2.1 notes tell players
+  to stop the server first.
+
 ## Current State (2026-10-05)
 **The client:**
 - The phone runs our built client: `local/client/witcher116.apk`, made by `tools/client116/build_client.py` from the clean Play export (`~/witcher_1.1.116_300085`) and the extracted packs (`~/witcher_1.1.116_packs`).

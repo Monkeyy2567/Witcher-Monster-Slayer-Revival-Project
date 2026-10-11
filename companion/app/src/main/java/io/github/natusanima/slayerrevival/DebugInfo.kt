@@ -46,7 +46,6 @@ import kotlin.concurrent.thread
  */
 object DebugInfo {
     private const val TAIL = 2_000_000
-    private const val ISSUE_CHARS = 5_000
 
     // .prev logs are the runs before the last start: a restart would otherwise wipe the log of the crashed session.
     private val LOGS = listOf("events", "events.prev", "play", "client-build", "map-build", "server", "server.prev", "server.prev2",
@@ -74,13 +73,26 @@ object DebugInfo {
                 "app last stopped, and the app's logs. Emails and coordinates are masked and it holds no passwords. Nothing is sent " +
                 "until you choose where.\n\nIf the game crashed or closed by itself, open it once more first and wait a minute: it " +
                 "reports why it closed when it starts again.")
-            .setPositiveButton("Make the report") { _, _ -> make(activity) }
+            .setPositiveButton("Make the report") { _, _ ->
+                make(activity) { uri, name ->
+                    val send = Intent(Intent.ACTION_SEND).setType("application/zip").putExtra(Intent.EXTRA_STREAM, uri)
+                        .putExtra(Intent.EXTRA_SUBJECT, "Witcher Monster Slayer Revival report")
+                        .putExtra(Intent.EXTRA_TEXT, "Report from ${Build.MODEL}, app ${Updates.installedVersion(activity)}. What happened:\n")
+                        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    Toast.makeText(activity, "Saved in Downloads as $name. Send it to the maintainers: it has your phone's model, " +
+                        "versions and the app's logs, no passwords.", Toast.LENGTH_LONG).show()
+                    try {
+                        activity.startActivity(Intent.createChooser(send, "Send the report"))
+                    } catch (_: ActivityNotFoundException) {
+                    }
+                }
+            }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
     }
 
-    /** Saves the report in Downloads and opens the share sheet for it. Shows why if it can't. */
-    private fun make(activity: Activity) {
+    /** Saves the report in Downloads, then hands its URI and file name to [then] on the UI thread. Shows why if it can't. */
+    private fun make(activity: Activity, then: (Uri, String) -> Unit) {
         Toast.makeText(activity, "Making the report…", Toast.LENGTH_SHORT).show()
         thread(name = "report") {
             val made = try {
@@ -94,31 +106,42 @@ object DebugInfo {
                     Toast.makeText(activity, "The report could not be made: see the events log.", Toast.LENGTH_LONG).show()
                     return@runOnUiThread
                 }
-                val send = Intent(Intent.ACTION_SEND).setType("application/zip").putExtra(Intent.EXTRA_STREAM, made.first)
-                    .putExtra(Intent.EXTRA_SUBJECT, "Witcher Monster Slayer Revival report")
-                    .putExtra(Intent.EXTRA_TEXT, "Report from ${Build.MODEL}, app ${Updates.installedVersion(activity)}. What happened:\n")
-                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                Toast.makeText(activity, "Saved in Downloads as ${made.second}. Send it to the maintainers: it has your phone's model, " +
-                    "versions and the app's logs, no passwords.", Toast.LENGTH_LONG).show()
-                try {
-                    activity.startActivity(Intent.createChooser(send, "Send the report"))
-                } catch (_: ActivityNotFoundException) {
-                }
+                then(made.first, made.second)
             }
         }
     }
 
-    /** Opens GitHub's new-issue page with the phone's details; the report file is attached by hand (the issue is public). */
-    fun issue(context: Context) {
-        val title = "Bug report: app ${Updates.installedVersion(context)}, Android ${Build.VERSION.RELEASE}, ${Build.MODEL}"
-        val body = "**What happened?**\n\n\n**Phone and game**\n```\n${mask(header(context)).take(ISSUE_CHARS)}\n```\n\n" +
-            "Attach the report file from Downloads (the app's Send a report button makes it). Issues here are public.\n"
+    /** Saves a report in Downloads, then opens GitHub's new-issue page for the player to attach it. Says first that it goes public. */
+    fun issue(activity: Activity) {
+        AlertDialog.Builder(activity)
+            .setTitle("Report on GitHub")
+            .setMessage("The app saves a report zip in Downloads, then opens a new GitHub issue for you to attach it to. Issues are " +
+                "public, and so is the zip once attached: it holds your phone's model and versions and the app's logs, with emails and " +
+                "coordinates masked and no passwords. To send it privately, use Send a report instead.")
+            .setPositiveButton("Make the report") { _, _ -> make(activity) { _, name -> openIssue(activity, name) } }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    /** GitHub's new-issue page, prefilled with a short summary of the phone and the name of the [report] to attach. */
+    private fun openIssue(activity: Activity, report: String) {
+        val title = "Bug report: app ${Updates.installedVersion(activity)}, Android ${Build.VERSION.RELEASE}, ${Build.MODEL}"
+        // Short on purpose: signed out, GitHub's sign-in carries this whole link along (return_to), and with the full phone
+        // details in it (about 2,000 characters) signing in ended on a 500 at github.com/session. The details are in the report file.
+        val game = installed(activity, MainActivity.GAME)?.let {
+            "${it.versionName} (${it.longVersionCode}), ${if (playSigned(it)) "Play" else "other"} signature"
+        } ?: "not installed"
+        val body = "**What happened?**\n\n\n**Phone and game**\n" +
+            mask("${Build.MANUFACTURER} ${Build.MODEL}, Android ${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT})\n" +
+                "Game $game. Server: ${ServerService.status.take(100)}") +
+            "\n\nReport file: $report (attach it from Downloads). Issues here are public.\n"
         val page = Uri.parse("https://github.com/${Updates.REPO}/issues/new").buildUpon()
             .appendQueryParameter("title", title).appendQueryParameter("body", body).build()
+        Toast.makeText(activity, "Saved in Downloads as $report: attach it to the issue.", Toast.LENGTH_LONG).show()
         try {
-            context.startActivity(Intent(Intent.ACTION_VIEW, page))
+            activity.startActivity(Intent(Intent.ACTION_VIEW, page))
         } catch (_: ActivityNotFoundException) {
-            Toast.makeText(context, "No browser to open GitHub with.", Toast.LENGTH_LONG).show()
+            Toast.makeText(activity, "No browser to open GitHub with.", Toast.LENGTH_LONG).show()
         }
     }
 
