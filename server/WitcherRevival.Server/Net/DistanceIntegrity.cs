@@ -56,12 +56,13 @@ public static class DistanceIntegrity
         return 6371000 * 2 * Math.Asin(Math.Sqrt(Math.Clamp(h, 0, 1)));
     }
 
-    public static Result Evaluate(Track track, Fix f, long nowMs)
+    /// <param name="allowMock">The operator accepts simulated locations (the companion's walk button): every other check still applies.</param>
+    public static Result Evaluate(Track track, Fix f, long nowMs, bool allowMock = false)
     {
         if (!double.IsFinite(f.Lat) || !double.IsFinite(f.Lng) || f.Lat is < -90 or > 90 || f.Lng is < -180 or > 180 ||
             f.ElapsedMs < 0 || f.CapturedUtcMs <= 0) return Reject("invalid-fix");
         if ((f.Flags & 1) == 0) return Reject("missing-accuracy");
-        if ((f.Flags & 2) != 0) return Reject("mock-location");
+        if ((f.Flags & 2) != 0 && !allowMock) return Reject("mock-location");
         if (!float.IsFinite(f.Accuracy) || f.Accuracy <= 0 || f.Accuracy > MaxAccuracy) return Reject("inaccurate");
         if (f.CapturedUtcMs < nowMs - MaxAgeSeconds * 1000L) return Reject("stale-fix");
         if (f.CapturedUtcMs > nowMs + 15000) return Reject("future-fix");

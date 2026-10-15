@@ -41,6 +41,11 @@ While the server runs, **Dashboard** opens the operator panel (players, map, new
 
 On the phone, Players → your profile also has **Debug tools** for testing: set orens, level and skill points, learn every skill, give or take items, turn on invincibility or one-hit kills, bring the quests next to you, set the time the quests see (full moon night, dusk, dawn, night or day, for the steps that wait for them), and a quest list that shows every quest's next step and can complete it for you (including the 12 h and 24 h waits). Each change can be undone from History (with the game closed).
 
+**Walk button.** For days you can't go out, the main screen's **Walk button** card puts a joystick over the game (bottom left) that walks your character: push it up for north, and the further you push, the faster you go (up to a brisk walk, 2.5 m/s, inside the server's speed limit). It works by replacing the phone's location with a simulated one while it is on, so:
+1. Turn on Developer options (Settings > About phone, tap Build number 7 times), then **Settings > Developer options > Select mock location app > this app**. The card's **Developer options** button opens it.
+2. Tap **Turn on**, allow *display over other apps* and, for the first walk, the location permission (the walk starts where the phone is; **Start here** forgets the saved spot). Tap **Turn on** again, then open the game. **Turn off** (or the notification's Stop) gives the real GPS back.
+3. The server refuses simulated locations for **walking tasks** ("walk 1 km") like any other. To count the joystick's distance, set *Count walking with the on-screen walk button* to 1 on the Dashboard's Tuning page. Monsters, places and quests follow the simulated position either way.
+
 The app checks Releases for a newer version and offers to update itself (Android asks you to confirm the install). Updates keep your progress, but uninstalling the app deletes it.
 
 If a release also changes the game, the update says so, and the app then offers **Update the game**. It patches the game it built in place: no Google sign-in and no download, about 6 GB free for a few minutes, and one install confirmation.

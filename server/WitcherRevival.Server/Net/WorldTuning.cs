@@ -16,7 +16,8 @@ public sealed class WorldTuning
 
     public const string ExpPercent = "exp.percent", LootPercent = "loot.percent",
         HerbRespawnMinutes = "herbs.respawnMinutes", HerbsPerCell = "herbs.perCell", RealWeather = "weather.real",
-        StartingBag = "inventory.startSize", NestGold = "nests.gold", TrollDefeats = "story.trollDefeats";
+        StartingBag = "inventory.startSize", NestGold = "nests.gold", TrollDefeats = "story.trollDefeats",
+        CountMockWalking = "walking.countMock";
 
     private const string PlacesApply = "Places drawn from now on. Monsters already out stay for up to 30 minutes.";
 
@@ -61,6 +62,11 @@ public sealed class WorldTuning
             "1 shows the real weather where you play, from Open-Meteo (only your position rounded to about 11 km is sent); " +
             "0 keeps it always clear. The weather decides which monsters appear and which potions help.",
             "The next weather the game asks for (about every five minutes).", 1, 0, 1, 1, "on/off"),
+        new(CountMockWalking, "Walking", "Count walking with the on-screen walk button",
+            "1 counts the distance the companion app's walk button moves you (a location the phone marks as simulated) toward " +
+            "walking tasks such as \"walk 1 km\"; 0 refuses it, as for any simulated location. The speed limit and the other " +
+            "walking checks still apply. Only meaningful when the server protects walking distance (World page).",
+            "The next location batch the game sends (a few seconds).", 0, 0, 1, 1, "on/off"),
         new(StartingBag, "Inventory", "Starting bag size",
             "How many items the inventory holds before any bag is bought. The five bags in Thorstein's shop add 50 to 400 " +
             "each, up to 1000 in all. A full bag leaves fight loot behind and refuses herbs and shop items.",

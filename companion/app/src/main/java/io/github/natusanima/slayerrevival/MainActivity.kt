@@ -11,6 +11,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
@@ -68,6 +69,8 @@ class MainActivity : Activity() {
     private lateinit var mapText: TextView
     private lateinit var toggle: Button
     private lateinit var dashboard: Button
+    private lateinit var walkText: TextView
+    private lateinit var walkToggle: Button
     private lateinit var logTabs: List<Button>
     private lateinit var log: TextView
 
@@ -118,6 +121,30 @@ class MainActivity : Activity() {
         buttons.addView(toggle, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
         buttons.addView(dashboard, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
         play.addView(buttons)
+
+        val walk = card(page, "Walk button")
+        walk.addView(text(14f, MUTED).apply {
+            text = "A joystick over the game that walks your character, for when you can't go out. It replaces the phone's " +
+                "location while it is on. Needs: this app chosen as the mock location app (Settings > Developer options), and " +
+                "permission to display over other apps. Open the game after turning it on."
+            setPadding(0, px(6), 0, px(6))
+        })
+        walkText = text(14f).also { walk.addView(it) }
+        val walkButtons = LinearLayout(this)
+        walkToggle = button("Turn on", primary = true) { toggleWalk() }
+        walkButtons.addView(walkToggle, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        walkButtons.addView(button("Developer options") {
+            try {
+                startActivity(Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS))
+            } catch (_: ActivityNotFoundException) {
+                Toast.makeText(this, "Turn on Developer options first: tap Build number 7 times in About phone.", Toast.LENGTH_LONG).show()
+            }
+        }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        walkButtons.addView(button("Start here") {
+            WalkService.resetStart(this)
+            Toast.makeText(this, "The next walk starts from where the phone is.", Toast.LENGTH_SHORT).show()
+        }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        walk.addView(walkButtons)
 
         val setup = card(page, "Setup")
         setup.addView(text(14f, MUTED).apply {
@@ -274,6 +301,24 @@ class MainActivity : Activity() {
         startForegroundService(Intent(this, ServerService::class.java))
     }
 
+    /** Turns the walk button on or off; when something it needs is missing, opens the screen that grants it. */
+    private fun toggleWalk() {
+        if (WalkService.running) {
+            startService(Intent(this, WalkService::class.java).setAction(WalkService.STOP))
+            return
+        }
+        if (!Settings.canDrawOverlays(this)) {
+            Toast.makeText(this, "Allow this app to display over other apps, then come back and tap Turn on.", Toast.LENGTH_LONG).show()
+            startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+            return
+        }
+        if (WalkService.problem(this) != null) { // the location permission, for a first walk
+            requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 3)
+            return
+        }
+        startForegroundService(Intent(this, WalkService::class.java))
+    }
+
     override fun onResume() {
         super.onResume()
         ours = ClientBuildService.signedByUs(this) == true // asks the keystore: once here, not on every refresh
@@ -311,6 +356,15 @@ class MainActivity : Activity() {
             index != null -> Maps.name(this, index)
             else -> "none yet, choose it in the guided setup"
         }
+        walkToggle.text = if (WalkService.running) "Turn off" else "Turn on"
+        walkText.text = when {
+            WalkService.running -> "On: use the joystick at the bottom left of the game. Walking counts for walking tasks only " +
+                "if the Dashboard's Tuning page allows it."
+            WalkService.problem(this) != null -> WalkService.problem(this)!!
+            WalkService.status.isNotEmpty() -> WalkService.status
+            else -> "Off"
+        }
+        walkText.setTextColor(if (WalkService.running) GREEN else TEXT)
         if (playing && server == "Running") {
             playing = false
             EventLog.write(this, "play", "server is running: opening the game")

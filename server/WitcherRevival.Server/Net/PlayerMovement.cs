@@ -130,6 +130,7 @@ public sealed partial class PlayerService
                 long allowedElapsed = movementHelloElapsed + Math.Min(long.MaxValue - movementHelloElapsed - 15000,
                     Environment.TickCount64 - movementHelloTick) + 15000;
                 var track = movementTrack;
+                bool allowMock = world.Tuning.Get(WorldTuning.CountMockWalking) == 1;
                 var decisions = new List<(DistanceIntegrity.Fix Fix, DistanceIntegrity.Result Result)>();
                 long highWater = current.HighWaterUtcMs;
                 foreach (var fix in fixes)
@@ -139,7 +140,7 @@ public sealed partial class PlayerService
                         result = new(new(), "rejected", "capture-overlap");
                     else if (fix.ElapsedMs > allowedElapsed)
                         result = new(new(), "rejected", "clock-discontinuity");
-                    else result = DistanceIntegrity.Evaluate(track, fix, nowMs);
+                    else result = DistanceIntegrity.Evaluate(track, fix, nowMs, allowMock);
                     track = result.Track; decisions.Add((fix, result));
                     // Bad future/invalid timestamps cannot advance the persisted capture frontier.
                     if (fix.CapturedUtcMs > 0 && fix.CapturedUtcMs <= nowMs + 15000 && fix.ElapsedMs <= allowedElapsed)
